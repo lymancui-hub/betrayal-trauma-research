@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>情绪困扰的正念干预</title>
+  <style>
+    html,body{height:100%;margin:0;background:#f7f5ef;color:#27312f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+    .wrap{min-height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box;text-align:center;}
+    .box{max-width:560px;line-height:1.7;}
+    h1{font-size:22px;margin:0 0 12px;}
+    p{margin:8px 0;font-size:15px;}
+    .bar{height:4px;background:#ded7c8;border-radius:999px;overflow:hidden;margin:18px 0;}
+    .bar span{display:block;height:100%;width:38%;background:#46736b;border-radius:999px;animation:move 1.4s ease-in-out infinite alternate;}
+    @keyframes move{from{transform:translateX(0)}to{transform:translateX(165%)}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="box">
+      <h1>正在打开学习页面</h1>
+      <div class="bar"><span></span></div>
+      <p>页面内容较多，手机首次打开可能需要几秒钟。</p>
+      <p id="status">正在加载资料...</p>
+    </section>
+  </main>
+  <script>
+    const chunkCount = 8;
+    async function inflateBase64Gzip(base64) {
+      if (!('DecompressionStream' in window)) {
+        throw new Error('当前浏览器版本较旧，无法解压页面内容。请用最新版 Safari、Chrome 或微信内置浏览器打开。');
+      }
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+      return await new Response(stream).text();
+    }
+    async function main() {
+      const status = document.getElementById('status');
+      const parts = [];
+      for (let i = 0; i < chunkCount; i++) {
+        const name = `payload-${String(i).padStart(2, '0')}.txt`;
+        status.textContent = `正在加载资料 ${i + 1} / ${chunkCount}...`;
+        const res = await fetch(name, {cache: 'force-cache'});
+        if (!res.ok) throw new Error(`资料片段加载失败：${name}`);
+        parts.push((await res.text()).trim());
+      }
+      status.textContent = '正在展开页面...';
+      const html = await inflateBase64Gzip(parts.join(''));
+      document.open();
+      document.write(html);
+      document.close();
+    }
+    main().catch(err => {
+      document.getElementById('status').textContent = err.message || '页面加载失败，请稍后重试。';
+    });
+  </script>
+</body>
+</html>
